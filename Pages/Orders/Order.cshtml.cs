@@ -1,5 +1,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.Net;
+using System.Net.Mail;
 using System.Threading.Tasks;
 using Bakery.Data;
 using Bakery.Models;
@@ -25,8 +27,31 @@ namespace Bakery.Pages
         public async Task<IActionResult> OnPostAsync()
         {
             Product = await db.Products.FindAsync(Id);
-            if(ModelState.IsValid){
-                return RedirectToPage("Orders/OrderSuccess");
+            if(ModelState.IsValid){  
+                var body = $@"<p>Thank you, we have received your order for {OrderQuantity} unit(s) of {Product.Name}!</p>
+                <p>Your address is: <br/>{OrderShipping.Replace("\n", "<br/>")}</p>
+                Your total is ${Product.Price * OrderQuantity}.<br/>
+                We will contact you if we have questions about your order.  Thanks!<br/>";
+                using(var smtp = new SmtpClient())
+                {
+                    var credential = new NetworkCredential
+                    {
+                        UserName = "iancarr1412@gmail.com",  // replace with valid value
+                        Password = "13Tring86#"  // replace with valid value
+                    };
+                    smtp.Credentials = credential;
+                    smtp.Host = "smtp.gmail.com";
+                    smtp.Port = 587;
+                    smtp.EnableSsl = true;
+                    MailMessage msg = new MailMessage();
+                    msg.To.Add(OrderEmail);
+                    msg.Subject = "Fourth Coffee - New Order";
+                    msg.Body = body;
+                    msg.IsBodyHtml = true;
+                    msg.From = new MailAddress("iancarr1412@gmail.com");
+                    await smtp.SendMailAsync(msg);
+                }                              
+                return RedirectToPage("/Orders/OrderSuccess");                
             }
             return Page();
         }
